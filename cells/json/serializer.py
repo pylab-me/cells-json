@@ -16,12 +16,16 @@ from .exceptions import CircularReferenceError, JSONEncodeError, JSONSerializati
 
 try:
     import numpy as np
+
+
     HAS_NUMPY = True
 except ImportError:
     HAS_NUMPY = False
 
 try:
     import pandas as pd
+
+
     HAS_PANDAS = True
 except ImportError:
     HAS_PANDAS = False
@@ -205,7 +209,7 @@ class UniversalSerializer:
                     return self._serialize_recursive(res)
             except JSONEncodeError:
                 pass
-            
+
             return self._handle_unknown(obj)
         finally:
             self._seen.discard(obj_id)

@@ -65,6 +65,7 @@ class JSONAdapter:
         else:
             raise ValueError(f"Unsupported backend: {backend}")
 
+        self._ensure_str = kwargs.pop("ensure_str") if "ensure_str" in kwargs else None
         self._use_builtin = use_builtin
         self._serializer = UniversalSerializer(**kwargs)
 
@@ -96,6 +97,7 @@ class JSONAdapter:
             # '{\n  "a": 1,\n  "b": 2\n}'
             ```
         """
+        ensure_str = self._ensure_str if (self._ensure_str is not None) else ensure_str
         try:
             if self._use_orjson:
                 res = self._orjson_dumps(obj, **kwargs)
