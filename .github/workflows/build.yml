@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Upload artifacts (per-matrix)
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.os }}-py${{ matrix.python-version }}
           path: |
@@ -137,7 +137,7 @@ jobs:
 
     steps:
       - name: 📥 Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: collected
           merge-multiple: true
@@ -160,7 +160,7 @@ jobs:
           zip -rj packaged/all-builds.zip collected/*
 
       - name: ⬆️ Upload to GitHub
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ github.event.repository.name }}-all-builds-packaged
           path: packaged/all-builds.zip
