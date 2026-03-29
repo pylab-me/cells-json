@@ -6,10 +6,10 @@
 
 import json
 import sys
-from io import StringIO
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
+from io import StringIO
 from pathlib import Path
 from uuid import uuid4
 
@@ -29,6 +29,7 @@ from cells.json import (
     CircularReferenceError,
 )
 from cells.json.utils import JsonSerializable, json_serializable, save_json, load_json, prettify_json
+from cells.json.adapter import HAS_ORJSON
 
 
 class Color(Enum):
@@ -408,6 +409,11 @@ def test_parse_float_falls_back_to_stdlib_decoder():
 def test_parse_float_requires_json_backend():
     """测试 orjson 主路径下对不支持的解码参数显式报错"""
     print("测试 loads 不支持参数报错...")
+    if not HAS_ORJSON:
+        result = loads("{\"value\": 1.25}", parse_float=Decimal)
+        assert result["value"] == Decimal("1.25")
+        print("⊘ orjson 未安装，auto 已退回 json backend")
+        return
     try:
         loads("{\"value\": 1.25}", parse_float=Decimal)
         assert False, "应该提示显式指定 json backend"
@@ -441,8 +447,13 @@ def test_orjson_indent_and_sort_keys():
 def test_orjson_unsupported_dump_parameter_requires_json_backend():
     """测试不支持的编码参数会要求显式指定 json backend"""
     print("测试 dumps 不支持参数报错...")
+    if not HAS_ORJSON:
+        result = dumps({"name": "中文"}, ensure_ascii=True)
+        assert "\\u4e2d\\u6587" in result
+        print("⊘ orjson 未安装，auto 已退回 json backend")
+        return
     try:
-        dumps({"name": "Alice"}, ensure_ascii=True)
+        dumps({"name": "中文"}, ensure_ascii=True)
         assert False, "应该提示显式指定 json backend"
     except TypeError as exc:
         assert "backend=\"json\"" in str(exc)
