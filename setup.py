@@ -9,6 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DIST_NAME = "cells-json"
 MODULE_ROOT = "cells"
 VERSION_FILE = BASE_DIR / MODULE_ROOT / "json" / "version.py"
+README_FILE = BASE_DIR / "README.md"
 
 
 def build_version() -> str:
@@ -25,11 +26,20 @@ def read_version(version_file: Path) -> str:
     return match.group(1)
 
 
+def read_readme(readme_file: Path) -> str:
+    """Read the project README for package metadata."""
+    return readme_file.read_text(encoding="utf-8")
+
+
 try:
     version = read_version(VERSION_FILE)
 except Exception:
     version = build_version()
 
+try:
+    long_description = read_readme(README_FILE)
+except Exception:
+    long_description = "Orjson-first JSON serialization utilities for the cells namespace."
 
 setup(
     name=DIST_NAME,
@@ -38,6 +48,8 @@ setup(
     author="HarmonSir",
     author_email="git@pylab.me",
     description="Orjson-first JSON serialization utilities for the cells namespace",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_namespace_packages(include=[f"{MODULE_ROOT}.*"]),
     include_package_data=True,
     zip_safe=False,
