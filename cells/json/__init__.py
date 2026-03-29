@@ -10,7 +10,7 @@
 - 多种 JSON 后端支持（json、orjson）
 """
 
-from .adapter import dumps, JSONAdapter, loads
+from .adapter import dump, dumps, JSONAdapter, load, loads
 from .exceptions import (
     CircularReferenceError,
     JSONDecodeError,
@@ -35,7 +35,9 @@ __all__ = [
     "UnsupportedTypeError",
     # 适配器（支持多种 JSON 后端）
     "JSONAdapter",
+    "dump",
     "dumps",
+    "load",
     "loads",
     "prettify_json",
     "__VERSION__",

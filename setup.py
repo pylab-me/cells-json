@@ -1,3 +1,5 @@
+import datetime
+import re
 from pathlib import Path
 
 from setuptools import find_namespace_packages, setup
@@ -9,25 +11,33 @@ MODULE_ROOT = "cells"
 VERSION_FILE = BASE_DIR / MODULE_ROOT / "json" / "version.py"
 
 
-def read_version() -> str:
-    """从 version.py 中读取版本号，避免导入包导致依赖冲突"""
-    version_scope: dict[str, str] = {}
-    try:
-        content = VERSION_FILE.read_text(encoding="utf-8")
-        exec(content, version_scope)
-        return version_scope["__VERSION__"]
-    except Exception as e:
-        # 备选方案，防止读取失败
-        return "0.1.0"
+def build_version() -> str:
+    """Generate a timestamp-based version for fallback."""
+    return datetime.datetime.now().strftime("%Y.%m.%d.%H%M%S")
+
+
+def read_version(version_file: Path) -> str:
+    """Read __VERSION__ from the version module without importing the package."""
+    content = version_file.read_text(encoding="utf-8")
+    match = re.search(r'^__VERSION__\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+    if match is None:
+        raise ValueError(f"Unable to find __VERSION__ in {version_file}")
+    return match.group(1)
+
+
+try:
+    version = read_version(VERSION_FILE)
+except Exception:
+    version = build_version()
 
 
 setup(
     name=DIST_NAME,
-    version=read_version(),
+    version=version,
     license="MPL-2.0",
     author="HarmonSir",
     author_email="git@pylab.me",
-    description="Cells JSON serialization utilities",
+    description="Orjson-first JSON serialization utilities for the cells namespace",
     packages=find_namespace_packages(include=[f"{MODULE_ROOT}.*"]),
     include_package_data=True,
     zip_safe=False,

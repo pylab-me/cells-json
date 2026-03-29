@@ -6,6 +6,7 @@
 
 import json
 import sys
+from io import StringIO
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -17,6 +18,11 @@ from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cells.json import (
+    dump,
+    dumps,
+    JSONAdapter,
+    load,
+    loads,
     safe_json_dumps,
     UniversalSerializer,
     JSONEncodeError,
@@ -372,6 +378,119 @@ def test_prettify():
     print("✓ 美化输出测试通过")
 
 
+def test_stdlib_style_dumps_and_loads():
+    """测试标准库风格的 dump/dumps/load/loads 接口"""
+    print("测试标准库风格接口...")
+
+    payload = {"name": "Alice", "amount": Decimal("10.50")}
+    json_text = dumps(payload, ensure_ascii=False, sort_keys=True)
+    parsed = loads(json_text)
+
+    assert "\"Alice\"" in json_text
+    assert parsed["amount"] == 10.5
+
+    buffer = StringIO()
+    dump(payload, buffer, ensure_ascii=False)
+    buffer.seek(0)
+    loaded_payload = load(buffer)
+    assert loaded_payload["name"] == "Alice"
+    print("✓ 标准库风格接口测试通过")
+
+
+def test_parse_float_falls_back_to_stdlib_decoder():
+    """测试显式指定 json 后端处理标准库解析钩子"""
+    print("测试 loads 显式 json 后端...")
+    result = loads("{\"value\": 1.25}", parse_float=Decimal, backend="json")
+    assert result["value"] == Decimal("1.25")
+    print("✓ loads 显式 json 后端测试通过")
+
+
+def test_parse_float_requires_json_backend():
+    """测试 orjson 主路径下对不支持的解码参数显式报错"""
+    print("测试 loads 不支持参数报错...")
+    try:
+        loads("{\"value\": 1.25}", parse_float=Decimal)
+        assert False, "应该提示显式指定 json backend"
+    except TypeError as exc:
+        assert "backend=\"json\"" in str(exc)
+        assert "parse_float" in str(exc)
+    print("✓ loads 不支持参数报错测试通过")
+
+
+def test_adapter_instance_stdlib_signature():
+    """测试 JSONAdapter 实例调用方式"""
+    print("测试 JSONAdapter 实例接口...")
+    json_adapter = JSONAdapter()
+
+    encoded = json_adapter.dumps({"amount": Decimal("8.50")}, ensure_ascii=False)
+    decoded = json_adapter.loads(encoded)
+
+    assert decoded["amount"] == 8.5
+    print("✓ JSONAdapter 实例接口测试通过")
+
+
+def test_orjson_indent_and_sort_keys():
+    """测试 orjson 主路径支持的标准库风格参数"""
+    print("测试 orjson 参数适配...")
+    result = dumps({"b": 1, "a": 2}, ensure_ascii=False, sort_keys=True, indent=2)
+    assert result.index("\"a\"") < result.index("\"b\"")
+    assert "\n" in result
+    print("✓ orjson 参数适配测试通过")
+
+
+def test_orjson_unsupported_dump_parameter_requires_json_backend():
+    """测试不支持的编码参数会要求显式指定 json backend"""
+    print("测试 dumps 不支持参数报错...")
+    try:
+        dumps({"name": "Alice"}, ensure_ascii=True)
+        assert False, "应该提示显式指定 json backend"
+    except TypeError as exc:
+        assert "backend=\"json\"" in str(exc)
+        assert "ensure_ascii" in str(exc)
+    print("✓ dumps 不支持参数报错测试通过")
+
+
+def test_orjson_skipkeys_is_adapted():
+    """测试 skipkeys 在 orjson 主路径下会进行预处理"""
+    print("测试 dumps skipkeys 适配...")
+    result = dumps(
+        {"valid": 1, object(): 2, "nested": {"ok": 3, object(): 4}},
+        skipkeys=True,
+        ensure_ascii=False,
+    )
+    parsed = loads(result)
+    assert parsed == {"valid": 1, "nested": {"ok": 3}}
+    print("✓ dumps skipkeys 适配测试通过")
+
+
+def test_orjson_compact_separators_is_adapted():
+    """测试紧凑 separators 在 orjson 主路径下可用"""
+    print("测试 dumps separators 适配...")
+    result = dumps({"a": 1, "b": 2}, ensure_ascii=False, separators=(",", ":"))
+    assert result == "{\"a\":1,\"b\":2}"
+    print("✓ dumps separators 适配测试通过")
+
+
+def test_orjson_check_circular_false_is_accepted():
+    """测试 check_circular=False 在 orjson 主路径下可接受"""
+    print("测试 dumps check_circular 参数...")
+    result = dumps({"name": "Alice"}, ensure_ascii=False, check_circular=False)
+    assert "\"Alice\"" in result
+    print("✓ dumps check_circular 参数测试通过")
+
+
+def test_from_cells_import_json_usage():
+    """测试 from cells import json 的替代用法"""
+    print("测试 from cells import json...")
+    from cells import json as cells_json
+
+    result = cells_json.dumps({"amount": Decimal("12.30")}, ensure_ascii=False)
+    parsed = cells_json.loads(result)
+
+    assert parsed["amount"] == 12.3
+    print("✓ from cells import json 测试通过")
+
+
 def run_all_tests():
     """运行所有测试"""
     print("=" * 50)
@@ -398,6 +517,16 @@ def run_all_tests():
     test_pandas_support()
     test_file_operations()
     test_prettify()
+    test_stdlib_style_dumps_and_loads()
+    test_parse_float_falls_back_to_stdlib_decoder()
+    test_parse_float_requires_json_backend()
+    test_adapter_instance_stdlib_signature()
+    test_orjson_indent_and_sort_keys()
+    test_orjson_unsupported_dump_parameter_requires_json_backend()
+    test_orjson_skipkeys_is_adapted()
+    test_orjson_compact_separators_is_adapted()
+    test_orjson_check_circular_false_is_accepted()
+    test_from_cells_import_json_usage()
 
     print()
     print("=" * 50)
