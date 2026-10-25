@@ -50,7 +50,7 @@ setup(
     description="Orjson-first JSON serialization utilities for the cells namespace",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_namespace_packages(include=[f"{MODULE_ROOT}.*"]),
+    packages=find_namespace_packages(include=[f"{MODULE_ROOT}.json", f"{MODULE_ROOT}.json.*"]),
     include_package_data=True,
     zip_safe=False,
     python_requires=">=3.9",
