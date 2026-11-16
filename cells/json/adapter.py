@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Union
 
 from .exceptions import CircularReferenceError, JSONDecodeError, JSONEncodeError
 from .serializer import UniversalSerializer
@@ -19,7 +19,7 @@ except ImportError:
     orjson = None
 
 
-_NATIVE_ENCODE_EXCEPTIONS: Tuple[type[Exception], ...] = (TypeError, ValueError)
+_NATIVE_ENCODE_EXCEPTIONS: tuple[type[Exception], ...] = (TypeError, ValueError)
 _SERIALIZER_CONFIG_KEYS = {
     "strict",
     "ignore_unknown",
@@ -64,7 +64,7 @@ def _ensure_ascii_json_bytes(json_bytes: bytes) -> bytes:
 def _raise_orjson_parameter_error(function_name: str, parameter_name: str) -> None:
     raise TypeError(
         f"{function_name}() does not support parameter '{parameter_name}' with the active orjson backend. "
-        f"Use backend=\"json\" for stdlib-compatible handling."
+        f'Use backend="json" for stdlib-compatible handling.'
     )
 
 
@@ -118,9 +118,8 @@ def _validate_orjson_dumps_parameters(
             option |= getattr(orjson, "OPT_INDENT_2", 0)
         else:
             _raise_orjson_parameter_error("dumps", "indent")
-    if separators is not None:
-        if separators != (",", ":"):
-            _raise_orjson_parameter_error("dumps", "separators")
+    if separators is not None and separators != (",", ":"):
+        _raise_orjson_parameter_error("dumps", "separators")
     if sort_keys:
         option |= getattr(orjson, "OPT_SORT_KEYS", 0)
     unsupported_keys = [key for key in extra_kwargs if key not in _ORJSON_SAFE_DUMPS_KWARGS]
@@ -142,7 +141,13 @@ def _validate_orjson_loads_parameters(
     if not _is_default_json_decoder(cls):
         _raise_orjson_parameter_error("loads", "cls")
     if object_hook is not None or parse_float is not None or parse_int is not None:
-        parameter_name = "object_hook" if object_hook is not None else "parse_float" if parse_float is not None else "parse_int"
+        parameter_name = (
+            "object_hook"
+            if object_hook is not None
+            else "parse_float"
+            if parse_float is not None
+            else "parse_int"
+        )
         _raise_orjson_parameter_error("loads", parameter_name)
     if parse_constant is not None or object_pairs_hook is not None:
         parameter_name = "parse_constant" if parse_constant is not None else "object_pairs_hook"
@@ -157,7 +162,7 @@ class JSONAdapter:
 
     def __init__(
         self,
-        backend: Optional[str] = None,
+        backend: str | None = None,
         use_builtin: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -363,8 +368,13 @@ class JSONAdapter:
                 object_pairs_hook=object_pairs_hook,
                 **kwargs,
             )
-        except (json.JSONDecodeError, getattr(orjson, "JSONDecodeError", json.JSONDecodeError)) as exc:
-            raise JSONDecodeError(str(exc), getattr(exc, "doc", ""), getattr(exc, "pos", 0)) from exc
+        except (
+            json.JSONDecodeError,
+            getattr(orjson, "JSONDecodeError", json.JSONDecodeError),
+        ) as exc:
+            raise JSONDecodeError(
+                str(exc), getattr(exc, "doc", ""), getattr(exc, "pos", 0)
+            ) from exc
 
     def load(
         self,
@@ -391,7 +401,9 @@ class JSONAdapter:
 
 
 @lru_cache(maxsize=32)
-def _create_adapter(backend: str, use_builtin: bool, config_items: tuple[tuple[str, Any], ...]) -> JSONAdapter:
+def _create_adapter(
+    backend: str, use_builtin: bool, config_items: tuple[tuple[str, Any], ...]
+) -> JSONAdapter:
     return JSONAdapter(backend=backend, use_builtin=use_builtin, **dict(config_items))
 
 

@@ -154,7 +154,7 @@ jobs:
             --endpoint-url ${{ env.S3_ENDPOINT }}
 
       - name: 📦 Zip and Upload Artifact
-        # 之前提到过，如果你想上传 zip，这里需要先 zip 再上传
+        # Create the ZIP archive before uploading it / 之前提到过，如果你想上传 zip，这里需要先 zip 再上传
         run: |
           mkdir -p packaged
           zip -rj packaged/all-builds.zip collected/*

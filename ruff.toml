@@ -1,0 +1,66 @@
+# ===== Basic settings / 基础设置 =====
+target-version = "py312"
+line-length = 100
+indent-width = 4
+
+exclude = [
+    ".git", ".venv", ".mypy_cache", ".ruff_cache", "__pycache__",
+    "node_modules", "build", "dist", "*.egg-info",
+]
+
+# ===== Lint rule selection / Lint 规则选择 =====
+[lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # Pyflakes（syntax-level issues such as undefined names and unused imports / 未定义名、未使用导入等语法级问题）
+    "I", # isort（Import sorting / 导入排序）
+    "N", # pep8-naming
+    "UP", # pyupgrade（modern syntax / 现代化语法）
+    "B", # flake8-bugbear（common bug patterns / 常见 bug 模式）
+    "C4", # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501", # Let the formatter handle line length to avoid conflicts with ruff format / 行宽交给 formatter，避免与 ruff format 冲突
+    "B008", # Frameworks such as FastAPI conventionally use Depends(...) as a default value / FastAPI 等框架中 Depends(...) 作为默认值是约定用法
+    "B904", # Do not require raise ... from in every case / 部分场景下不强制 raise ... from
+    "UP007", # Some teams prefer explicit Union over X | Y / 某些团队偏好显式 Union 而非 X | Y
+]
+
+# Specify rules excluded from automatic fixes to protect application behavior / 明确哪些规则不自动修复，防止 --fix 改坏业务代码
+unfixable = ["F401"]   # Unused imports may have side effects in __init__.py or model registration / 未使用导入可能在 __init__.py 或模型注册中承担副作用
+fixable = ["ALL"]
+
+# ===== Per-file/directory exceptions / 按文件/目录豁免 =====
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
+"**/models/**" = ["F401"]
+"**/conftest.py" = ["F401"]
+"tests/**/*.py" = ["S101", "PLR2004", "E402"]
+"scripts/**/*.py" = ["T20"]
+"**/*.py" = ["N806", "E741", "B007", "SIM108"]
+
+# ===== Import sorting / 导入排序 =====
+[lint.isort]
+known-first-party = ["codatlas"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+lines-after-imports = 2
+order-by-type = true
+case-sensitive = true
+
+# ===== Formatter / 格式化器 =====
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+docstring-code-line-length = 88
+
+[lint.pydocstyle]
+# Set the docstring convention to Google style / 核心：将文档字符串规范设置为 Google 风格
+convention = "google"
+
+[lint.pep8-naming]
+ignore-names = ["__init__"]

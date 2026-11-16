@@ -1,24 +1,25 @@
-"""JSON 异常模块
+"""JSON exceptions / JSON 异常模块
 
-定义统一的 JSON 异常体系，确保 API 接口一致性。
+Define shared JSON exceptions for consistent API behavior. / 定义统一的 JSON 异常体系，确保 API 接口一致性。
 """
 
 from typing import Any
 
 
 class JSONError(Exception):
-    """JSON 基础异常。"""
+    """Base JSON exception. / JSON 基础异常。"""
+
     pass
 
 
 class JSONSerializationError(JSONError, TypeError):
-    """序列化基础异常。
+    """Base serialization exception. / 序列化基础异常。
 
-    继承 TypeError 以保持与标准库 json 的兼容性。
+    Inherit TypeError for compatibility with standard-library json. / 继承 TypeError 以保持与标准库 json 的兼容性。
 
     Attributes:
-        obj: 无法序列化的对象。
-        obj_type: 对象的类型。
+        obj: The object that cannot be serialized. / 无法序列化的对象。
+        obj_type: The object's type. / 对象的类型。
 
     Examples:
         ```python
@@ -30,11 +31,11 @@ class JSONSerializationError(JSONError, TypeError):
     """
 
     def __init__(self, obj: Any = None, message: str = None):
-        """初始化序列化异常。
+        """Initialize a serialization exception. / 初始化序列化异常。
 
         Args:
-            obj: 导致异常的对象。
-            message: 自定义错误消息。如果未提供，将自动生成。
+            obj: The object that caused the exception. / 导致异常的对象。
+            message: Custom error message; generated automatically if omitted. / 自定义错误消息。如果未提供，将自动生成。
         """
         self.obj = obj
         self.obj_type = type(obj) if obj is not None else None
@@ -47,7 +48,7 @@ class JSONSerializationError(JSONError, TypeError):
 
 
 class JSONEncodeError(JSONSerializationError):
-    """统一的编码异常。
+    """Shared encoding exception. / 统一的编码异常。
 
     Examples:
         ```python
@@ -57,18 +58,19 @@ class JSONEncodeError(JSONSerializationError):
             print(e)
         ```
     """
+
     pass
 
 
 class JSONDecodeError(JSONError, ValueError):
-    """统一的解码异常。
+    """Shared decoding exception. / 统一的解码异常。
 
-    继承 ValueError 以保持与标准库 json 的兼容性。
+    Inherit ValueError for compatibility with standard-library json. / 继承 ValueError 以保持与标准库 json 的兼容性。
 
     Attributes:
-        msg: 错误消息。
-        doc: 被解析的 JSON 文档。
-        pos: 错误发生的位置索引。
+        msg: Error message. / 错误消息。
+        doc: The JSON document being parsed. / 被解析的 JSON 文档。
+        pos: Index of the error position. / 错误发生的位置索引。
 
     Examples:
         ```python
@@ -80,12 +82,12 @@ class JSONDecodeError(JSONError, ValueError):
     """
 
     def __init__(self, message: str, doc: str = "", pos: int = 0):
-        """初始化解码异常。
+        """Initialize a decoding exception. / 初始化解码异常。
 
         Args:
-            message: 错误描述。
-            doc: JSON 文档内容。
-            pos: 错误在文档中的字节位置。
+            message: Error description. / 错误描述。
+            doc: JSON document content. / JSON 文档内容。
+            pos: Byte position of the error in the document. / 错误在文档中的字节位置。
         """
         super().__init__(message)
         self.msg = message
@@ -93,15 +95,15 @@ class JSONDecodeError(JSONError, ValueError):
         self.pos = pos
 
     def __str__(self):
-        """返回格式化的错误消息。"""
+        """Return the formatted error message. / 返回格式化的错误消息。"""
         return f"{self.msg}: line 1 column 1 (char {self.pos})" if self.pos > 0 else self.msg
 
 
 class CircularReferenceError(JSONEncodeError):
-    """循环引用异常。
+    """Circular reference exception. / 循环引用异常。
 
     Attributes:
-        path: 发现循环引用的对象路径。
+        path: Object path where the circular reference was detected. / 发现循环引用的对象路径。
 
     Examples:
         ```python
@@ -115,11 +117,11 @@ class CircularReferenceError(JSONEncodeError):
     """
 
     def __init__(self, obj: Any, path: str = ""):
-        """初始化循环引用异常。
+        """Initialize a circular reference exception. / 初始化循环引用异常。
 
         Args:
-            obj: 循环引用的对象。
-            path: 对象的访问路径。
+            obj: The object involved in the circular reference. / 循环引用的对象。
+            path: Access path to the object. / 对象的访问路径。
         """
         message = f"Circular reference detected for object of type {type(obj).__name__}"
         if path:
@@ -129,23 +131,25 @@ class CircularReferenceError(JSONEncodeError):
 
 
 class UnsupportedTypeError(JSONSerializationError):
-    """不支持的类型异常。
+    """Unsupported type exception. / 不支持的类型异常。
 
     Attributes:
-        hint: 解决该类型序列化问题的建议。
+        hint: Hint for serializing this type. / 解决该类型序列化问题的建议。
 
     Examples:
         ```python
-        raise UnsupportedTypeError(complex_obj, hint="请实现 to_dict() 方法")
+        raise UnsupportedTypeError(
+            complex_obj, hint="Implement a to_dict() method / 请实现 to_dict() 方法"
+        )
         ```
     """
 
     def __init__(self, obj: Any, hint: str = ""):
-        """初始化不支持类型异常。
+        """Initialize an unsupported type exception. / 初始化不支持类型异常。
 
         Args:
-            obj: 不支持的对象。
-            hint: 解决建议或提示。
+            obj: The unsupported object. / 不支持的对象。
+            hint: Suggested solution or hint. / 解决建议或提示。
         """
         message = f"Unsupported type: {type(obj).__name__}"
         if hint:

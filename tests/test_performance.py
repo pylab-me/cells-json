@@ -6,45 +6,47 @@ import timeit
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
-# 添加父目录到路径，确保使用本地代码
+# Add the parent directory to the import path to use local code / 添加父目录到路径，确保使用本地代码
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cells.json.adapter import JSONAdapter
 
 
-# --- 1. 测试数据构造 (Test Data Suites) ---
+# --- 1. Test data suites / 测试数据构造 (Test Data Suites) ---
 
-def get_simple_data(size: int = 1000) -> Dict[str, Any]:
-    """基础类型数据"""
+
+def get_simple_data(size: int = 1000) -> dict[str, Any]:
+    """Data using basic types / 基础类型数据"""
     return {f"key_{i}": i for i in range(size)}
 
 
-def get_complex_data(size: int = 1000) -> Dict[str, Any]:
-    """复杂类型数据：包含适配器需要介入的类型"""
+def get_complex_data(size: int = 1000) -> dict[str, Any]:
+    """Complex data containing types that require adapter conversion / 复杂类型数据：包含适配器需要介入的类型"""
     return {
         f"id_{i}": {
             "uuid": uuid.uuid4(),
             "time": datetime.now(),
             "price": decimal.Decimal("199.99"),
             "path": Path("/usr/bin/python"),
-            "tags": [f"tag_{i}"] * 5
+            "tags": [f"tag_{i}"] * 5,
         }
         for i in range(size)
     }
 
 
-# --- 2. 性能测试核心类 (Performance Benchmark) ---
+# --- 2. Performance benchmark class / 性能测试核心类 (Performance Benchmark) ---
+
 
 class PerformanceRunner:
-    """Design Intent: 自动化对比不同后端的序列化吞吐量"""
+    """Design Intent: Automatically compare serialization throughput across backends / 自动化对比不同后端的序列化吞吐量"""
 
     def __init__(self, data: Any, iterations: int = 100):
         self.data = data
         self.iterations = iterations
-        # 统一关闭 ensure_str 以对比核心序列化性能
+        # Disable ensure_str consistently to compare core serialization performance / 统一关闭 ensure_str 以对比核心序列化性能
         self.adapter_auto = JSONAdapter(backend="auto", use_builtin=True)
         self.adapter_custom = JSONAdapter(backend="auto", use_builtin=False)
 
@@ -52,15 +54,17 @@ class PerformanceRunner:
         print(f"\n🚀 Benchmarking: {label} ({self.iterations} iterations)")
         print("-" * 60)
 
-        # 强制执行 GC 并禁用，排除波动
+        # Collect garbage and disable GC to reduce timing variation / 强制执行 GC 并禁用，排除波动
         gc.collect()
         gc.disable()
 
         try:
-            # 1. 原生 json
-            t_json = timeit.timeit(lambda: json.dumps(self.data, default=str), number=self.iterations)
+            # 1. Native json / 原生 json
+            t_json = timeit.timeit(
+                lambda: json.dumps(self.data, default=str), number=self.iterations
+            )
 
-            # 2. 原生 orjson (修正版：开启原生处理并提供必要兜底)
+            # 2. Native orjson (enable native handling and the required fallback) / 原生 orjson (修正版：开启原生处理并提供必要兜底)
             t_orjson = "N/A"
             try:
                 import orjson
@@ -72,34 +76,33 @@ class PerformanceRunner:
                         return str(obj)
                     raise TypeError
 
-                # 使用原生支持的选项
+                # Use natively supported options / 使用原生支持的选项
                 option = 0
                 for opt in ["OPT_SERIALIZE_DATETIME", "OPT_SERIALIZE_UUID", "OPT_NON_STR_KEYS"]:
                     option |= getattr(orjson, opt, 0)
 
                 t_orjson = timeit.timeit(
                     lambda: orjson.dumps(self.data, option=option, default=orjson_default),
-                    number=self.iterations
+                    number=self.iterations,
                 )
             except Exception as e:
                 t_orjson = f"Error: {type(e).__name__}"
 
             # 3. Adapter (Built-in mode)
-            # 设置 ensure_str=False 避免字符串解码开销
+            # Set ensure_str=False to avoid string decoding overhead / 设置 ensure_str=False 避免字符串解码开销
             t_adapter_builtin = timeit.timeit(
-                lambda: self.adapter_auto.dumps(self.data, ensure_str=False),
-                number=self.iterations
+                lambda: self.adapter_auto.dumps(self.data, ensure_str=False), number=self.iterations
             )
 
             # 4. Adapter (Universal mode)
             t_adapter_custom = timeit.timeit(
                 lambda: self.adapter_custom.dumps(self.data, ensure_str=False),
-                number=self.iterations
+                number=self.iterations,
             )
         finally:
             gc.enable()
 
-        # 输出结果
+        # Print the results / 输出结果
         results = [
             ("Standard json.dumps", t_json),
             ("Native orjson.dumps", t_orjson),
@@ -116,12 +119,12 @@ class PerformanceRunner:
 
 
 def core_main():
-    """执行性能评估"""
-    # 场景 A: 简单字典
+    """Run the performance evaluation / 执行性能评估"""
+    # Scenario A: simple dictionary / 场景 A: 简单字典
     simple_data = get_simple_data(2000)
     PerformanceRunner(simple_data, 500).run_benchmark("Simple Dictionary (2k keys)")
 
-    # 场景 B: 复杂对象
+    # Scenario B: complex objects / 场景 B: 复杂对象
     complex_data = get_complex_data(500)
     PerformanceRunner(complex_data, 100).run_benchmark("Complex Objects (500 entries)")
 

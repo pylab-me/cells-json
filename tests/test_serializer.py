@@ -1,7 +1,7 @@
-"""测试 JSON 序列化器
+"""Test the JSON serializer / 测试 JSON 序列化器
 
-运行测试：python -m pytest tests/test_serializer.py -v
-或者：python tests/test_serializer.py
+Run tests: python -m pytest tests/test_serializer.py -v / 运行测试：python -m pytest tests/test_serializer.py -v
+Or: python tests/test_serializer.py / 或者：python tests/test_serializer.py
 """
 
 import json
@@ -14,41 +14,42 @@ from pathlib import Path
 from uuid import uuid4
 
 
-# 添加父目录到路径
+# Add the parent directory to the import path / 添加父目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cells.json import (
+    CircularReferenceError,
+    JSONAdapter,
+    JSONEncodeError,
+    UniversalSerializer,
     dump,
     dumps,
-    JSONAdapter,
     load,
     loads,
     safe_json_dumps,
-    UniversalSerializer,
-    JSONEncodeError,
-    CircularReferenceError,
 )
-from cells.json.utils import JsonSerializable, json_serializable, save_json, load_json, prettify_json
 from cells.json.adapter import HAS_ORJSON
+from cells.json.utils import (
+    JsonSerializable,
+    json_serializable,
+    load_json,
+    prettify_json,
+    save_json,
+)
 
 
 class Color(Enum):
-    """颜色枚举"""
+    """Color enumeration / 颜色枚举"""
+
     RED = 1
     GREEN = 2
     BLUE = 3
 
 
 def test_basic_types():
-    """测试基本类型序列化"""
+    """Test basic type serialization / 测试基本类型序列化"""
     print("测试基本类型...")
-    data = {
-        "string": "hello",
-        "int": 42,
-        "float": 3.14,
-        "bool": True,
-        "none": None
-    }
+    data = {"string": "hello", "int": 42, "float": 3.14, "bool": True, "none": None}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed == data
@@ -56,30 +57,27 @@ def test_basic_types():
 
 
 def test_datetime():
-    """测试 datetime 对象序列化"""
+    """Test datetime object serialization / 测试 datetime 对象序列化"""
     print("测试 datetime...")
     data = {
         "datetime": datetime(2024, 1, 1, 12, 30, 45),
         "date": date(2024, 1, 1),
         "time": time(12, 30, 45),
-        "timedelta": timedelta(hours=1, minutes=30)
+        "timedelta": timedelta(hours=1, minutes=30),
     }
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed["datetime"] == "2024-01-01T12:30:45"
     assert parsed["date"] == "2024-01-01"
     assert parsed["time"] == "12:30:45"
-    assert parsed["timedelta"] == 5400.0  # 1.5 小时 = 5400 秒
+    assert parsed["timedelta"] == 5400.0  # 1.5 hours = 5400 seconds / 1.5 小时 = 5400 秒
     print("✓ datetime 测试通过")
 
 
 def test_decimal():
-    """测试 Decimal 序列化"""
+    """Test Decimal serialization / 测试 Decimal 序列化"""
     print("测试 Decimal...")
-    data = {
-        "amount": Decimal("10.50"),
-        "price": Decimal("99.99")
-    }
+    data = {"amount": Decimal("10.50"), "price": Decimal("99.99")}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed["amount"] == 10.5
@@ -88,12 +86,10 @@ def test_decimal():
 
 
 def test_uuid():
-    """测试 UUID 序列化"""
+    """Test UUID serialization / 测试 UUID 序列化"""
     print("测试 UUID...")
     uid = uuid4()
-    data = {
-        "id": uid
-    }
+    data = {"id": uid}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed["id"] == str(uid)
@@ -101,12 +97,9 @@ def test_uuid():
 
 
 def test_enum():
-    """测试 Enum 序列化"""
+    """Test Enum serialization / 测试 Enum 序列化"""
     print("测试 Enum...")
-    data = {
-        "color": Color.RED,
-        "favorite": Color.BLUE
-    }
+    data = {"color": Color.RED, "favorite": Color.BLUE}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed["color"] == 1
@@ -115,11 +108,9 @@ def test_enum():
 
 
 def test_path():
-    """测试 Path 序列化"""
+    """Test Path serialization / 测试 Path 序列化"""
     print("测试 Path...")
-    data = {
-        "path": Path("/home/user/documents")
-    }
+    data = {"path": Path("/home/user/documents")}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed["path"] == "/home/user/documents"
@@ -127,12 +118,9 @@ def test_path():
 
 
 def test_set_and_tuple():
-    """测试 set 和 tuple 序列化"""
+    """Test set and tuple serialization / 测试 set 和 tuple 序列化"""
     print("测试 set 和 tuple...")
-    data = {
-        "set": {1, 2, 3},
-        "tuple": (1, 2, 3)
-    }
+    data = {"set": {1, 2, 3}, "tuple": (1, 2, 3)}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert isinstance(parsed["set"], list)
@@ -143,7 +131,7 @@ def test_set_and_tuple():
 
 
 def test_custom_object():
-    """测试自定义对象序列化"""
+    """Test custom object serialization / 测试自定义对象序列化"""
     print("测试自定义对象...")
 
     class User:
@@ -155,9 +143,7 @@ def test_custom_object():
             return {"name": self.name, "age": self.age}
 
     user = User("Alice", 25)
-    data = {
-        "user": user
-    }
+    data = {"user": user}
     result = safe_json_dumps(data)
     parsed = json.loads(result)
     assert parsed["user"]["name"] == "Alice"
@@ -166,7 +152,7 @@ def test_custom_object():
 
 
 def test_json_serializable_base():
-    """测试 JsonSerializable 基类"""
+    """Test the JsonSerializable base class / 测试 JsonSerializable 基类"""
     print("测试 JsonSerializable 基类...")
 
     class User(JsonSerializable):
@@ -183,7 +169,7 @@ def test_json_serializable_base():
 
 
 def test_json_serializable_decorator():
-    """测试 @json_serializable 装饰器"""
+    """Test the @json_serializable decorator / 测试 @json_serializable 装饰器"""
     print("测试 @json_serializable 装饰器...")
 
     @json_serializable
@@ -201,20 +187,14 @@ def test_json_serializable_decorator():
 
 
 def test_nested_structures():
-    """测试嵌套结构"""
+    """Test nested structures / 测试嵌套结构"""
     print("测试嵌套结构...")
     data = {
         "user": {
             "name": "Alice",
-            "details": {
-                "age": 25,
-                "address": {
-                    "city": "Beijing",
-                    "zip": "100000"
-                }
-            }
+            "details": {"age": 25, "address": {"city": "Beijing", "zip": "100000"}},
         },
-        "timestamp": datetime.now()
+        "timestamp": datetime.now(),
     }
     result = safe_json_dumps(data)
     parsed = json.loads(result)
@@ -224,28 +204,28 @@ def test_nested_structures():
 
 
 def test_circular_reference():
-    """测试循环引用"""
+    """Test circular references / 测试循环引用"""
     print("测试循环引用...")
     a = {}
     a["self"] = a
 
-    # 默认行为：返回标记字符串
+    # Default behavior: return a marker string / 默认行为：返回标记字符串
     result = safe_json_dumps(a)
     parsed = json.loads(result)
     assert "CircularReference" in parsed["self"]
     print("✓ 循环引用测试通过（默认模式）")
 
-    # 严格模式：抛出异常
+    # Strict mode: raise an exception / 严格模式：抛出异常
     try:
         safe_json_dumps(a, fail_on_circular=True)
-        assert False, "应该抛出 CircularReferenceError"
+        raise AssertionError("应该抛出 CircularReferenceError")
     except CircularReferenceError as e:
         assert "Circular reference" in str(e)
     print("✓ 循环引用测试通过（严格模式）")
 
 
 def test_mixed_types():
-    """测试混合类型"""
+    """Test mixed types / 测试混合类型"""
     print("测试混合类型...")
     data = {
         "user": {
@@ -254,11 +234,11 @@ def test_mixed_types():
             "balance": Decimal("100.50"),
             "created_at": datetime.now(),
             "favorite_color": Color.BLUE,
-            "id": uuid4()
+            "id": uuid4(),
         },
         "tags": ["python", "json", "serializer"],
         "count": 42,
-        "active": True
+        "active": True,
     }
     result = safe_json_dumps(data)
     parsed = json.loads(result)
@@ -270,7 +250,7 @@ def test_mixed_types():
 
 
 def test_strict_mode():
-    """测试严格模式"""
+    """Test strict mode / 测试严格模式"""
     print("测试严格模式...")
 
     class CustomType:
@@ -281,13 +261,13 @@ def test_strict_mode():
 
     try:
         serializer.dumps({"obj": obj})
-        assert False, "应该抛出异常"
+        raise AssertionError("应该抛出异常")
     except JSONEncodeError:
         print("✓ 严格模式测试通过")
 
 
 def test_ignore_unknown():
-    """测试忽略未知类型"""
+    """Test ignoring unknown types / 测试忽略未知类型"""
     print("测试忽略未知类型...")
 
     class CustomType:
@@ -303,7 +283,7 @@ def test_ignore_unknown():
 
 
 def test_numpy_support():
-    """测试 numpy 支持"""
+    """Test NumPy support / 测试 numpy 支持"""
     try:
         import numpy as np
 
@@ -312,7 +292,7 @@ def test_numpy_support():
             "array": np.array([1, 2, 3]),
             "int64": np.int64(42),
             "float64": np.float64(3.14),
-            "bool_": np.bool_(True)
+            "bool_": np.bool_(True),
         }
         result = safe_json_dumps(data)
         parsed = json.loads(result)
@@ -326,7 +306,7 @@ def test_numpy_support():
 
 
 def test_pandas_support():
-    """测试 pandas 支持"""
+    """Test pandas support / 测试 pandas 支持"""
     try:
         import pandas as pd
 
@@ -334,10 +314,7 @@ def test_pandas_support():
         df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
         series = pd.Series([1, 2, 3], name="values")
 
-        data = {
-            "df": df,
-            "series": series
-        }
+        data = {"df": df, "series": series}
         result = safe_json_dumps(data)
         parsed = json.loads(result)
         assert isinstance(parsed["df"], list)
@@ -349,7 +326,7 @@ def test_pandas_support():
 
 
 def test_file_operations():
-    """测试文件操作"""
+    """Test file operations / 测试文件操作"""
     print("测试文件操作...")
 
     import tempfile
@@ -358,11 +335,11 @@ def test_file_operations():
         filepath = Path(tmpdir) / "test.json"
         data = {"name": "Alice", "age": 25}
 
-        # 保存
+        # Save / 保存
         save_json(data, filepath)
         assert filepath.exists()
 
-        # 加载
+        # Load / 加载
         loaded = load_json(filepath)
         assert loaded == data
 
@@ -370,7 +347,7 @@ def test_file_operations():
 
 
 def test_prettify():
-    """测试美化输出"""
+    """Test formatted output / 测试美化输出"""
     print("测试美化输出...")
     data = {"name": "Alice", "age": 25}
     result = prettify_json(data)
@@ -380,14 +357,14 @@ def test_prettify():
 
 
 def test_stdlib_style_dumps_and_loads():
-    """测试标准库风格的 dump/dumps/load/loads 接口"""
+    """Test standard-library-style dump/dumps/load/loads APIs / 测试标准库风格的 dump/dumps/load/loads 接口"""
     print("测试标准库风格接口...")
 
     payload = {"name": "Alice", "amount": Decimal("10.50")}
     json_text = dumps(payload, ensure_ascii=False, sort_keys=True)
     parsed = loads(json_text)
 
-    assert "\"Alice\"" in json_text
+    assert '"Alice"' in json_text
     assert parsed["amount"] == 10.5
 
     buffer = StringIO()
@@ -399,32 +376,32 @@ def test_stdlib_style_dumps_and_loads():
 
 
 def test_parse_float_falls_back_to_stdlib_decoder():
-    """测试显式指定 json 后端处理标准库解析钩子"""
+    """Test explicitly selecting the json backend for standard-library parsing hooks / 测试显式指定 json 后端处理标准库解析钩子"""
     print("测试 loads 显式 json 后端...")
-    result = loads("{\"value\": 1.25}", parse_float=Decimal, backend="json")
+    result = loads('{"value": 1.25}', parse_float=Decimal, backend="json")
     assert result["value"] == Decimal("1.25")
     print("✓ loads 显式 json 后端测试通过")
 
 
 def test_parse_float_requires_json_backend():
-    """测试 orjson 主路径下对不支持的解码参数显式报错"""
+    """Test explicit errors for unsupported decoding parameters on the orjson path / 测试 orjson 主路径下对不支持的解码参数显式报错"""
     print("测试 loads 不支持参数报错...")
     if not HAS_ORJSON:
-        result = loads("{\"value\": 1.25}", parse_float=Decimal)
+        result = loads('{"value": 1.25}', parse_float=Decimal)
         assert result["value"] == Decimal("1.25")
         print("⊘ orjson 未安装，auto 已退回 json backend")
         return
     try:
-        loads("{\"value\": 1.25}", parse_float=Decimal)
-        assert False, "应该提示显式指定 json backend"
+        loads('{"value": 1.25}', parse_float=Decimal)
+        raise AssertionError("应该提示显式指定 json backend")
     except TypeError as exc:
-        assert "backend=\"json\"" in str(exc)
+        assert 'backend="json"' in str(exc)
         assert "parse_float" in str(exc)
     print("✓ loads 不支持参数报错测试通过")
 
 
 def test_adapter_instance_stdlib_signature():
-    """测试 JSONAdapter 实例调用方式"""
+    """Test calls through a JSONAdapter instance / 测试 JSONAdapter 实例调用方式"""
     print("测试 JSONAdapter 实例接口...")
     json_adapter = JSONAdapter()
 
@@ -436,16 +413,16 @@ def test_adapter_instance_stdlib_signature():
 
 
 def test_orjson_indent_and_sort_keys():
-    """测试 orjson 主路径支持的标准库风格参数"""
+    """Test standard-library-style parameters supported on the orjson path / 测试 orjson 主路径支持的标准库风格参数"""
     print("测试 orjson 参数适配...")
     result = dumps({"b": 1, "a": 2}, ensure_ascii=False, sort_keys=True, indent=2)
-    assert result.index("\"a\"") < result.index("\"b\"")
+    assert result.index('"a"') < result.index('"b"')
     assert "\n" in result
     print("✓ orjson 参数适配测试通过")
 
 
 def test_orjson_ensure_ascii_is_adapted():
-    """测试 ensure_ascii=True 在 orjson 主路径下会做兼容转换"""
+    """Test compatibility conversion for ensure_ascii=True on the orjson path / 测试 ensure_ascii=True 在 orjson 主路径下会做兼容转换"""
     print("测试 dumps ensure_ascii 适配...")
     result = dumps({"name": "中文", "emoji": "😀"}, ensure_ascii=True)
     assert result.isascii()
@@ -460,7 +437,7 @@ def test_orjson_ensure_ascii_is_adapted():
 
 
 def test_orjson_skipkeys_is_adapted():
-    """测试 skipkeys 在 orjson 主路径下会进行预处理"""
+    """Test preprocessing for skipkeys on the orjson path / 测试 skipkeys 在 orjson 主路径下会进行预处理"""
     print("测试 dumps skipkeys 适配...")
     result = dumps(
         {"valid": 1, object(): 2, "nested": {"ok": 3, object(): 4}},
@@ -473,23 +450,23 @@ def test_orjson_skipkeys_is_adapted():
 
 
 def test_orjson_compact_separators_is_adapted():
-    """测试紧凑 separators 在 orjson 主路径下可用"""
+    """Test compact separators on the orjson path / 测试紧凑 separators 在 orjson 主路径下可用"""
     print("测试 dumps separators 适配...")
     result = dumps({"a": 1, "b": 2}, ensure_ascii=False, separators=(",", ":"))
-    assert result == "{\"a\":1,\"b\":2}"
+    assert result == '{"a":1,"b":2}'
     print("✓ dumps separators 适配测试通过")
 
 
 def test_orjson_check_circular_false_is_accepted():
-    """测试 check_circular=False 在 orjson 主路径下可接受"""
+    """Test acceptance of check_circular=False on the orjson path / 测试 check_circular=False 在 orjson 主路径下可接受"""
     print("测试 dumps check_circular 参数...")
     result = dumps({"name": "Alice"}, ensure_ascii=False, check_circular=False)
-    assert "\"Alice\"" in result
+    assert '"Alice"' in result
     print("✓ dumps check_circular 参数测试通过")
 
 
 def test_from_cells_import_json_usage():
-    """测试 from cells import json 的替代用法"""
+    """Test the from cells import json import style / 测试 from cells import json 的替代用法"""
     print("测试 from cells import json...")
     from cells import json as cells_json
 
@@ -501,7 +478,7 @@ def test_from_cells_import_json_usage():
 
 
 def run_all_tests():
-    """运行所有测试"""
+    """Run all tests / 运行所有测试"""
     print("=" * 50)
     print("开始运行 JSON 序列化器测试")
     print("=" * 50)
