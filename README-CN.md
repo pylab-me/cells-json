@@ -243,6 +243,10 @@ python -m pytest tests/test_serializer.py -v
 python tests/test_performance.py
 ```
 
+使用 `python tests/test_performance.py --markdown benchmark.md` 可写入报告。基准对比标准库 `json` 与 `cells-json` 的两种适配器模式，采用等价转换和字符串输出，并报告五轮测量的中位数。
+
+推送 `v*` 标签会发布 GitHub Release，附带构建压缩包，并在说明中包含 benchmark 结果。推送 `main` 会更新 `rolling` 预发布及其标签，指向本次构建提交。通过 `GITHUB_TOKEN` 创建的 GitHub Release 不会触发独立的、由 release 事件驱动的 PyPI 工作流。
+
 性能受数据内容、后端、转换路径、参数和运行环境影响。该脚本用于本地对比，不保证固定的性能提升倍数。
 
 ## 许可证

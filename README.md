@@ -243,6 +243,10 @@ Run the included benchmark with:
 python tests/test_performance.py
 ```
 
+Use `python tests/test_performance.py --markdown benchmark.md` to write a report. The benchmark compares standard-library `json` with the two `cells-json` adapter modes, using equivalent conversions and string output, and reports the median of five repeats.
+
+Pushes to `v*` tags publish a GitHub Release with the build archive and benchmark results in its notes. Pushes to `main` update the `rolling` prerelease and its tag to the built commit. GitHub releases created with `GITHUB_TOKEN` do not trigger the separate release-event PyPI workflow.
+
 Performance depends on the payload, backend, conversion path, options, and environment. The benchmark is a local comparison tool; no fixed speedup is guaranteed.
 
 ## License

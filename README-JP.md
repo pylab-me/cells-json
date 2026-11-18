@@ -243,6 +243,10 @@ NumPy または pandas が未インストールの場合、対応するテスト
 python tests/test_performance.py
 ```
 
+`python tests/test_performance.py --markdown benchmark.md` でレポートを書き出せます。標準ライブラリの `json` と `cells-json` の二つのアダプターモードを、同等の変換と文字列出力で比較し、5 回の測定の中央値を報告します。
+
+`v*` タグを push すると、ビルドアーカイブを添付し、説明にベンチマーク結果を含めた GitHub Release を公開します。`main` への push は、`rolling` のプレリリースとタグをビルド対象のコミットに更新します。`GITHUB_TOKEN` で作成した GitHub Release は、release イベントを使用する別の PyPI ワークフローを起動しません。
+
 性能はデータ、バックエンド、変換経路、オプション、実行環境に依存します。このスクリプトはローカルでの比較用であり、一定の高速化率を保証するものではありません。
 
 ## ライセンス

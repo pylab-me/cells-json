@@ -6,7 +6,12 @@ concurrency:
 
 on:
   push:
+    branches: [ '**' ]
+    tags: [ 'v*' ]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -23,10 +28,10 @@ jobs:
       PYTHONUTF8: "1"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -54,6 +59,7 @@ jobs:
       - name: Run serializer tests
         shell: bash
         run: |
+          $PYTHON_EXEC -m pip install -e .
           $PYTHON_EXEC -m pytest tests/test_serializer.py -v
 
   build:
@@ -71,10 +77,10 @@ jobs:
       PYTHONUTF8: "1"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -120,38 +126,21 @@ jobs:
           path: |
             dist/*.whl
             dist/*.tar.gz
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 3
 
   package-artifacts:
     name: Package all builds into one zip
     needs: build
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      S3_BUCKET: ${{ vars.S3_BUCKET || '' }}
-      S3_ENDPOINT: ${{ vars.S3_ENDPOINT || '' }}
-      S3_PREFIX: ${{ vars.S3_PREFIX || 'builds' }}
-      AWS_DEFAULT_REGION: ${{ vars.S3_REGION || 'auto' }}
 
     steps:
       - name: 📥 Download all build artifacts
         uses: actions/download-artifact@v8
         with:
+          pattern: build-*
           path: collected
           merge-multiple: true
-
-      - name: 🚀 S3/R2 Upload
-        if: ${{ env.AWS_ACCESS_KEY_ID && env.S3_BUCKET && startsWith(github.ref, 'refs/tags/v') }}
-        run: |
-          CLEAN_PREFIX=$(python3 -c "import os; print(os.getenv('S3_PREFIX', '').strip('/'))")
-          CLEAN_BUCKET=$(python3 -c "import os; print(os.getenv('S3_BUCKET', '').strip('/'))")
-          aws s3 cp collected/ s3://${CLEAN_BUCKET}/${CLEAN_PREFIX:-builds}/ \
-            --recursive \
-            --exclude "*" \
-            --include "*.whl" \
-            --endpoint-url ${{ env.S3_ENDPOINT }}
 
       - name: 📦 Zip and Upload Artifact
         # Create the ZIP archive before uploading it / 之前提到过，如果你想上传 zip，这里需要先 zip 再上传
@@ -165,3 +154,137 @@ jobs:
           name: ${{ github.event.repository.name }}-all-builds-packaged
           path: packaged/all-builds.zip
           retention-days: 3
+
+  upload-storage:
+    name: Upload wheels to S3/R2
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_BUCKET: ${{ vars.S3_BUCKET || '' }}
+      S3_ENDPOINT: ${{ vars.S3_ENDPOINT || '' }}
+      S3_PREFIX: ${{ vars.S3_PREFIX || 'builds' }}
+      AWS_DEFAULT_REGION: ${{ vars.S3_REGION || 'auto' }}
+
+    steps:
+      - name: Download wheel distributions
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-*
+          path: collected
+          merge-multiple: true
+
+      # Keep storage failures separate from GitHub publishing. / 存储上传失败不阻断 GitHub 发布。
+      - name: 🚀 S3/R2 Upload
+        if: ${{ env.AWS_ACCESS_KEY_ID && env.S3_BUCKET }}
+        run: |
+          CLEAN_PREFIX=$(python3 -c "import os; print(os.getenv('S3_PREFIX', '').strip('/'))")
+          CLEAN_BUCKET=$(python3 -c "import os; print(os.getenv('S3_BUCKET', '').strip('/'))")
+          aws s3 cp collected/ s3://${CLEAN_BUCKET}/${CLEAN_PREFIX:-builds}/ \
+            --recursive \
+            --exclude "*" \
+            --include "*.whl" \
+            --endpoint-url "$S3_ENDPOINT"
+
+  release:
+    name: Publish GitHub release
+    needs: [ test, build, package-artifacts ]
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download packaged builds
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ github.event.repository.name }}-all-builds-packaged
+          path: packaged
+
+      - name: Download wheel distributions
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify wheel distributions
+        run: |
+          compgen -G 'dist/*.whl' > /dev/null
+
+      - name: Set up Python for tag benchmark
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Benchmark against standard-library json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python -m pip install -e .
+          python tests/test_performance.py --markdown benchmark.md
+          cat benchmark.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepare versioned release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          printf 'Built from `%s`.\n\n[Workflow run](%s)\n\n' "$GITHUB_SHA" "$RUN_URL" > release-notes.md
+          cat benchmark.md >> release-notes.md
+
+      - name: Publish versioned release with benchmark notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: |
+            dist/*.whl
+            packaged/all-builds.zip
+            benchmark.md
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          draft: false
+          prerelease: false
+          make_latest: 'true'
+
+      - name: Prepare rolling tag and release notes
+        id: rolling
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Skip stale builds before moving the rolling tag. / 移动 rolling 标签前跳过过期构建。
+          MAIN_SHA=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$MAIN_SHA" != "$GITHUB_SHA" ]; then
+            echo "Skipping rolling release: main has advanced."
+            exit 0
+          fi
+          git tag --force rolling "$GITHUB_SHA"
+          git push --force origin refs/tags/rolling
+          printf 'Rolling build of `main` at `%s`.\n\n[Workflow run](%s)\n' "$GITHUB_SHA" "$RUN_URL" > release-notes.md
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+
+      - name: Publish rolling prerelease
+        if: github.ref == 'refs/heads/main' && steps.rolling.outputs.ready == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: rolling
+          target_commitish: ${{ github.sha }}
+          name: Rolling release
+          body_path: release-notes.md
+          files: |
+            dist/*.whl
+            packaged/all-builds.zip
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          draft: false
+          prerelease: true
+          make_latest: 'false'
